@@ -4,6 +4,8 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <time.h>
+#include <unistd.h>
 
 #define N 9
 
@@ -59,10 +61,34 @@ void desalloc_grid(float** grid){
     free(grid);
 }
 
+float** get_new_generation(float** grid){
+    float **new_grid  = alloc_grid();
+    
+   for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            switch(get_neighbors(grid, i, j)){
+                case 2:
+                    if(grid[i][j] == 1)
+                        new_grid[i][j] = 1;
+                    break;
+                case 3:
+                    new_grid[i][j] = 1;
+                    break;
+                default:
+                    break;
+                
+            }
+           
+    }}
+    
+    desalloc_grid(grid);
+    return new_grid;
+
+}
 
 int main(){
     float **grid = alloc_grid();
-    float **new_grid  = alloc_grid();
+    
 
     if (!glfwInit()) {
         fprintf(stderr, "Erro ao inicializar GLFW\n");
@@ -91,23 +117,35 @@ int main(){
     grid[lin+2][col+1] = 1.0;
     grid[lin+2][col+2] = 1.0;
 
+    // printf("%d", get_neighbors(grid, 1, 2));
+    double nextTime = glfwGetTime() + 1;  
+
     while (!glfwWindowShouldClose(window)) {
-        glClear(GL_COLOR_BUFFER_BIT);
+        double currentTime = glfwGetTime();
 
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
-                float r, g, b;
-                color_value(grid[j][i], &r, &g, &b); // Troquei a ordem de i e j aqui
-                frame_render(i, j, r, g, b);
+        if (currentTime >= nextTime) {
+            glClear(GL_COLOR_BUFFER_BIT);
+            // Exemplo: Incrementar o valor de uma célula específica da matriz
+    
+            grid = get_new_generation(grid);
+            for (int i = 0; i < N; i++) {
+                for (int j = 0; j < N; j++) {
+                    float r, g, b;
+                    color_value(grid[j][i], &r, &g, &b); // Troquei a ordem de i e j aqui
+                    frame_render(i, j, r, g, b);
+                }
             }
-        }
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+            glfwSwapBuffers(window);
+            nextTime += 1;
+
+        }
+            glfwPollEvents();
+
     }
 
     glfwTerminate();
 
     desalloc_grid(grid);
-    desalloc_grid(new_grid);
+    
 }
