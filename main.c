@@ -4,9 +4,10 @@
 #include <time.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <sys/time.h>
 
 #define N 2048
-#define NUM_THREADS 4
+#define NUM_THREADS 8
 
 sem_t mutex;
 sem_t barrier;
@@ -17,12 +18,14 @@ int generation = 0;
 typedef struct {
     int start_row;
     int end_row;
-    float** grid;
-    float **new_grid;
 } ThreadArgs;
 
 pthread_t threads[NUM_THREADS];
 ThreadArgs targs[NUM_THREADS];
+
+float **new_grid;
+float **grid;
+    
 
 int get_neighbors(float** grid, int i, int j) {
     int dx[] = {-1, -1, -1,  0, 0,  1, 1, 1};
@@ -43,22 +46,23 @@ int get_neighbors(float** grid, int i, int j) {
 void* process_matrix(void* args) {
 
     ThreadArgs* targs = (ThreadArgs*)args;
+    float **temp;
 
-    while(generation < 50){
+    while(generation < 200){
 
         for (int i = targs->start_row; i < targs->end_row; i++) {
             for (int j = 0; j < N; j++) {
                 
-                switch(get_neighbors(targs->grid, i, j)){
+                switch(get_neighbors(grid, i, j)){
                     case 2:
-                        if(targs->grid[i][j] == 1)
-                            targs->new_grid[i][j] = 1;
+                        if(grid[i][j] == 1)
+                            new_grid[i][j] = 1;
                         break;
                     case 3:
-                        targs->new_grid[i][j] = 1;
+                        new_grid[i][j] = 1;
                         break;
                     default:
-                         targs->new_grid[i][j] = 0;
+                        new_grid[i][j] = 0;
                         break;
                     
                 }
@@ -74,7 +78,9 @@ void* process_matrix(void* args) {
                 sem_post(&barrier);
             }
 
-            targs->grid = targs->new_grid;
+            temp = grid;
+            grid = new_grid;
+            new_grid = temp;
             count = 0;
         }
 
@@ -88,34 +94,30 @@ void* process_matrix(void* args) {
 
 
 float** alloc_grid(){
-    float **grid  = calloc(sizeof(float*),N);
+
+    float **gri = calloc(sizeof(float*),N);
     for(int i = 0; i < N; i++){
-        grid[i] = calloc(sizeof(float), N);
+        gri[i] = calloc(sizeof(float), N);
     }
-    return grid;
+    return gri;
 }
 
-void desalloc_grid(float** grid){
+void desalloc_grid(float** gri){
     for(int i = 0; i < N; i++){
-        free(grid[i]);
+        free(gri[i]);
     }
 
-    free(grid);
+    free(gri);
 }
 
-float** get_new_generation(float** grid){
+void get_new_generation(){
 
-    
-
-    float **new_grid  = alloc_grid();
 
     int rows_per_thread = N / NUM_THREADS;
 
      for (int i = 0; i < NUM_THREADS; i++) {
         targs[i].start_row = i * rows_per_thread;
         targs[i].end_row = (i + 1) * rows_per_thread;
-        targs[i].grid = grid;
-        targs[i].new_grid = new_grid;
         pthread_create(&threads[i], NULL, process_matrix, &targs[i]);
     }
 
@@ -124,14 +126,20 @@ float** get_new_generation(float** grid){
         pthread_join(threads[i], NULL);
     }
 
-    
-    desalloc_grid(grid);
-    return new_grid;
-
 }
 
+
+
 int main(){
-    float **grid = alloc_grid();
+
+   
+    new_grid = alloc_grid();
+    grid = alloc_grid();
+
+    struct timeval start, end;
+    long seconds, useconds;
+    double mtime;
+
     
 
     int lin = 1, col = 1;
@@ -146,19 +154,21 @@ int main(){
     sem_init(&barrier, 0, 0);
 
    
-    clock_t start_time = clock();
+    gettimeofday(&start, NULL);
     
+    get_new_generation(grid);
     
-    grid = get_new_generation(grid);
-    
-    
-    clock_t end_time = clock();
+    gettimeofday(&end, NULL);
 
-    double time_spent = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    seconds = end.tv_sec - start.tv_sec;
+    useconds = end.tv_usec - start.tv_usec;
 
-    printf("Tempo gasto: %f segundos\n", time_spent);
+    mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
+
+    printf("Tempo gasto: %f milisegundos\n", mtime);
 
     desalloc_grid(grid);
+    desalloc_grid(new_grid);
 
     sem_destroy(&mutex);
     sem_destroy(&barrier);
