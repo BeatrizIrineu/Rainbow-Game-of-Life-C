@@ -3,9 +3,15 @@
 #include <pthread.h>
 #include <time.h>
 #include <unistd.h>
+#include <semaphore.h>
 
 #define N 2048
 #define NUM_THREADS 4
+
+sem_t mutex;
+sem_t barrier;
+int count = 0;
+int generation = 0;
 
 
 typedef struct {
@@ -37,22 +43,45 @@ int get_neighbors(float** grid, int i, int j) {
 void* process_matrix(void* args) {
 
     ThreadArgs* targs = (ThreadArgs*)args;
-    for (int i = targs->start_row; i < targs->end_row; i++) {
-        for (int j = 0; j < N; j++) {
-            
-            switch(get_neighbors(targs->grid, i, j)){
-                case 2:
-                    if(targs->grid[i][j] == 1)
-                        targs->new_grid[i][j] = 1;
-                    break;
-                case 3:
-                    targs->new_grid[i][j] = 1;
-                    break;
-                default:
-                    break;
+
+    while(generation < 50){
+
+        for (int i = targs->start_row; i < targs->end_row; i++) {
+            for (int j = 0; j < N; j++) {
                 
+                switch(get_neighbors(targs->grid, i, j)){
+                    case 2:
+                        if(targs->grid[i][j] == 1)
+                            targs->new_grid[i][j] = 1;
+                        break;
+                    case 3:
+                        targs->new_grid[i][j] = 1;
+                        break;
+                    default:
+                         targs->new_grid[i][j] = 0;
+                        break;
+                    
+                }
             }
         }
+
+        sem_wait(&mutex);
+        count++;
+        
+        if (count == NUM_THREADS) {
+            generation += 1;
+            for (int i = 0; i < NUM_THREADS; i++) {
+                sem_post(&barrier);
+            }
+
+            targs->grid = targs->new_grid;
+            count = 0;
+        }
+
+        
+        sem_post(&mutex);
+        sem_wait(&barrier);
+
     }
     return NULL;
 }
@@ -94,7 +123,7 @@ float** get_new_generation(float** grid){
     for (int i = 0; i < NUM_THREADS; i++) {
         pthread_join(threads[i], NULL);
     }
-    
+
     
     desalloc_grid(grid);
     return new_grid;
@@ -113,13 +142,15 @@ int main(){
     grid[lin+2][col+1] = 1.0;
     grid[lin+2][col+2] = 1.0;
 
+    sem_init(&mutex, 0, 1);
+    sem_init(&barrier, 0, 0);
+
    
     clock_t start_time = clock();
-
-    for (int i = 0; i < 50; i++)
-    {
-        grid = get_new_generation(grid);
-    }
+    
+    
+    grid = get_new_generation(grid);
+    
     
     clock_t end_time = clock();
 
@@ -128,5 +159,8 @@ int main(){
     printf("Tempo gasto: %f segundos\n", time_spent);
 
     desalloc_grid(grid);
+
+    sem_destroy(&mutex);
+    sem_destroy(&barrier);
     
 }
