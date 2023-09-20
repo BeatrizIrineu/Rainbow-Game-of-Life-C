@@ -15,6 +15,10 @@ typedef struct {
     float **new_grid;
 } ThreadArgs;
 
+float **grid;
+float **new_grid;
+float **temp;
+
 
 int alives = 0;
 
@@ -51,9 +55,9 @@ void desalloc_grid(float** grid){
     free(grid);
 }
 
-float** get_new_generation(float** grid){
+void get_new_generation(){
 
-    float **new_grid  = alloc_grid();
+    
     alives = 0;
 
     int i, j;
@@ -67,7 +71,7 @@ float** get_new_generation(float** grid){
                     if(grid[i][j] == 1){
                         new_grid[i][j] = 1; 
                         alives++;
-                    }
+                    } else  new_grid[i][j] = 0; 
                    
                     break;
                 case 3:
@@ -81,17 +85,19 @@ float** get_new_generation(float** grid){
             }
         }
     }
+
+    temp = grid;
+    grid = new_grid;
+    new_grid = temp;
     
-    
-    desalloc_grid(grid);
-    return new_grid;
 
 }
 
 int main(){
 
-    omp_set_num_threads(1);
-    float **grid = alloc_grid();
+    omp_set_num_threads(8);
+    grid = alloc_grid();
+    new_grid  = alloc_grid();
     struct timeval start, end;
     long seconds, useconds;
     double mtime;
@@ -117,7 +123,7 @@ int main(){
     int i;
     for ( i = 0; i < 2000; i++)
     {   
-        grid = get_new_generation(grid);
+        get_new_generation();
     }
 
     printf("generation %d: %d\n", i, alives);
@@ -130,5 +136,6 @@ int main(){
     printf("Tempo gasto: %f milisegundos\n", mtime);
 
     desalloc_grid(grid);
+    desalloc_grid(new_grid);
     
 }
