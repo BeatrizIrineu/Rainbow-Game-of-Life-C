@@ -13,12 +13,17 @@ pthread_mutex_t count_mutex = PTHREAD_MUTEX_INITIALIZER;
 typedef struct {
     int start_row;
     int end_row;
-    float** grid;
+    float **grid;
     float **new_grid;
 } ThreadArgs;
 
 pthread_t threads[NUM_THREADS];
-ThreadArgs targs[NUM_THREADS];
+ThreadArgs targs[NUM_THREADS]; 
+
+float **temp;
+float **grid;
+float **new_grid;
+
 
 int alives = 0;
 
@@ -51,7 +56,7 @@ void* process_matrix(void* args) {
                         pthread_mutex_lock(&count_mutex); // Bloqueia o mutex
                         alives++;
                         pthread_mutex_unlock(&count_mutex); // Desbloqueia o mutex
-                    }
+                    }else targs->new_grid[i][j] = 0;
                     break;
                 case 3:
                     targs->new_grid[i][j] = 1;
@@ -66,14 +71,15 @@ void* process_matrix(void* args) {
             }
         }
     }
+
     return NULL;
 }
 
 
 float** alloc_grid(){
-    float **grid  = calloc(sizeof(float*),N);
+    float **grid  = (float**) calloc(sizeof(float*),N);
     for(int i = 0; i < N; i++){
-        grid[i] = calloc(sizeof(float), N);
+        grid[i] =  (float*) calloc(sizeof(float), N);
     }
     return grid;
 }
@@ -86,35 +92,33 @@ void desalloc_grid(float** grid){
     free(grid);
 }
 
-float** get_new_generation(float** grid){
-
-    
-
-    float **new_grid  = alloc_grid();
+void get_new_generation(){
 
     int rows_per_thread = N / NUM_THREADS;
 
      for (int i = 0; i < NUM_THREADS; i++) {
         targs[i].start_row = i * rows_per_thread;
         targs[i].end_row = (i + 1) * rows_per_thread;
-        targs[i].grid = grid;
         targs[i].new_grid = new_grid;
+        targs[i].grid = grid;
         pthread_create(&threads[i], NULL, process_matrix, &targs[i]);
     }
-
 
     for (int i = 0; i < NUM_THREADS; i++) {
         pthread_join(threads[i], NULL);
     }
-    
-    
-    desalloc_grid(grid);
-    return new_grid;
 
+    temp = grid;
+    grid = new_grid;
+    new_grid = temp;
+    
 }
 
 int main(){
-    float **grid = alloc_grid();
+
+    grid = alloc_grid();
+    new_grid  = alloc_grid();
+
     struct timeval start, end;
     long seconds, useconds;
     double mtime;
@@ -134,14 +138,12 @@ int main(){
     grid[lin+1][col+1] = 1.0;
     grid[lin+2][col+1] = 1.0;
 
-
-   
     gettimeofday(&start, NULL);
     int i;
     for ( i = 0; i < 2000; i++)
     {   
         alives = 0;
-        grid = get_new_generation(grid);
+        get_new_generation();
        
     }
 
@@ -155,5 +157,6 @@ int main(){
     printf("Tempo gasto: %f milisegundos\n", mtime);
 
     desalloc_grid(grid);
-    
+    desalloc_grid(new_grid);
+
 }
