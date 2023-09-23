@@ -7,17 +7,9 @@
 
 #define N 2048
 
-typedef struct {
-    int start_row;
-    int end_row;
-    float** grid;
-    float **new_grid;
-} ThreadArgs;
-
 float **grid;
 float **new_grid;
 float **temp;
-
 
 int alives = 0;
 int generation = 0;
