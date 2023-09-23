@@ -5,7 +5,11 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#include "graphic_functions.h"
+
 #define N 2048
+#define NUM_THREADS 8
+
 
 typedef struct {
     int start_row;
@@ -104,20 +108,15 @@ void get_new_generation(){
     temp = grid;
     grid = new_grid;
     new_grid = temp;
-
+    
+    generation++;
+    printf("geração %d:  %d vivos\n", generation, alives);
 
 }
 
-int main(int argc, char *argv[]){
+int main(){
 
-    if(argc < 2) {
-        printf("Por favor, forneça um número inteiro como argumento.\n");
-        return 1;
-    }
-
-    int num_threads = atoi(argv[1]);
-
-    omp_set_num_threads(num_threads);
+    omp_set_num_threads(8);
     grid = alloc_grid();
     new_grid  = alloc_grid();
     struct timeval start, end;
@@ -143,14 +142,16 @@ int main(int argc, char *argv[]){
     grid[lin+1][col+1] = 1.0;
     grid[lin+2][col+1] = 1.0;
 
+    GLFWwindow* window = init_window();
    
     gettimeofday(&start, NULL);
     int i;
-    for ( i = 0; i < 2000; i++)
-    {   
-        get_new_generation();
-    }
-    printf("geração %d:  %d vivos\n", i, alives);
+    // for ( i = 0; i < 2000; i++)
+    // {   
+    //     get_new_generation();
+    // }
+
+    show_grid(window, grid, get_new_generation);
     
     gettimeofday(&end, NULL);
     seconds = end.tv_sec - start.tv_sec;

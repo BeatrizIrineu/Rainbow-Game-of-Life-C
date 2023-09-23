@@ -8,6 +8,7 @@
 #include "graphic_functions.h"
 
 #define N 2048
+#define NUM_THREADS 8
 
 pthread_mutex_t count_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -18,7 +19,8 @@ typedef struct {
     float **new_grid;
 } ThreadArgs;
 
-int num_threads = 0;
+pthread_t threads[NUM_THREADS];
+ThreadArgs targs[NUM_THREADS]; 
 
 float **temp;
 float **grid;
@@ -26,6 +28,7 @@ float **new_grid;
 
 
 int alives = 0;
+int generation = 0;
 
 int get_neighbors(float** grid, int i, int j) {
     int dx[] = {-1, -1, -1,  0, 0,  1, 1, 1};
@@ -106,11 +109,11 @@ void desalloc_grid(float** grid){
     free(grid);
 }
 
-void get_new_generation(pthread_t *threads, ThreadArgs *targs){
+void get_new_generation(){
     alives = 0;
-    int rows_per_thread = N / num_threads;
+    int rows_per_thread = N / NUM_THREADS;
 
-     for (int i = 0; i < num_threads; i++) {
+     for (int i = 0; i < NUM_THREADS; i++) {
         targs[i].start_row = i * rows_per_thread;
         targs[i].end_row = (i + 1) * rows_per_thread;
         targs[i].new_grid = new_grid;
@@ -118,27 +121,17 @@ void get_new_generation(pthread_t *threads, ThreadArgs *targs){
         pthread_create(&threads[i], NULL, process_matrix, &targs[i]);
     }
 
-    for (int i = 0; i < num_threads; i++) {
+    for (int i = 0; i < NUM_THREADS; i++) {
         pthread_join(threads[i], NULL);
     }
 
     temp = grid;
     grid = new_grid;
     new_grid = temp;
-    
+    printf("generation %d: %d\n", generation, alives);
 }
 
-int main(int argc, char *argv[]){
-
-    if(argc < 2) {
-        printf("Por favor, forneça um número inteiro como argumento.\n");
-        return 1;
-    }
-
-    num_threads = atoi(argv[1]);
-
-    pthread_t threads[num_threads];
-    ThreadArgs targs[num_threads]; 
+int main(){
 
     grid = alloc_grid();
     new_grid  = alloc_grid();
@@ -165,15 +158,16 @@ int main(int argc, char *argv[]){
     gettimeofday(&start, NULL);
     int i;
 
-    for ( i = 0; i < 2000; i++)
-    {   
-        alives = 0;
-        get_new_generation(threads, targs);
+    GLFWwindow* window = init_window();
+
+    // for ( i = 0; i < 2000; i++)
+    // {   
+    //     alives = 0;
+    //     get_new_generation();
        
-    }
+    // }
 
-    printf("generation %d: %d\n", i, alives);
-
+    show_grid(window, grid, get_new_generation);
 
     gettimeofday(&end, NULL);
     seconds = end.tv_sec - start.tv_sec;
