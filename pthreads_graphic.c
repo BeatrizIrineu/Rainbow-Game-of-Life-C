@@ -30,14 +30,16 @@ float **new_grid;
 int alives = 0;
 int generation = 0;
 
+//http://www.each.usp.br/digiampietri/ed/aula11.pdf
+//utilizamos o conceito de fila circular para iterar sobre as bordas da matriz
 int get_neighbors(float** grid, int i, int j) {
-    int dx[] = {-1, -1, -1,  0, 0,  1, 1, 1};
-    int dy[] = {-1,  0,  1, -1, 1, -1, 0, 1};
+    int x_row[] = {-1, -1, -1,  0, 0,  1, 1, 1};
+    int y_column[] = {-1,  0,  1, -1, 1, -1, 0, 1};
     int quant = 0;
 
     for (int k = 0; k < 8; k++) {
-        int x = (i + dx[k] + N) % N; 
-        int y = (j + dy[k] + N) % N; 
+        int x = (i + x_row[k] + N) % N; 
+        int y = (j + y_column[k] + N) % N; 
 
         if (grid[x][y] > 0) {
             quant += 1;
@@ -47,13 +49,13 @@ int get_neighbors(float** grid, int i, int j) {
 }
 
 float mean_from_neighbors(float **grid, int i, int j){
-    int dx[] = {-1, -1, -1,  0, 0,  1, 1, 1};
-    int dy[] = {-1,  0,  1, -1, 1, -1, 0, 1};
+    int x_row[] = {-1, -1, -1,  0, 0,  1, 1, 1};
+    int y_column[] = {-1,  0,  1, -1, 1, -1, 0, 1};
     float soma = 0;
 
     for (int k = 0; k < 8; k++) {
-        int x = (i + dx[k] + N) % N; 
-        int y = (j + dy[k] + N) % N; 
+        int x = (i + x_row[k] + N) % N; 
+        int y = (j + y_column[k] + N) % N; 
 
         soma += grid[x][y];
     }
